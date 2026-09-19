@@ -1,0 +1,2 @@
+Total studies extracted: 9000
+Studies missing completion_date (excluded from duration analyses only): 2824 (31.4%)

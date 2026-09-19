@@ -1,0 +1,38 @@
+[
+  {
+    "test_name": "Chi-square test of independence: phase vs. overall_status",
+    "h0": "Trial phase and overall completion status are statistically independent.",
+    "h1": "Trial phase and overall completion status are associated.",
+    "statistic": 270.30960050822176,
+    "p_value": 7.989608592135053e-49,
+    "effect_size_name": "Cramer's V",
+    "effect_size": 0.10005731700125531,
+    "n": 9000,
+    "interpretation": "Phase and completion status are statistically dependent (chi2=270.3, p=7.99e-49); the association is weak in practical terms (Cramer's V=0.100), meaning phase shifts the completion-status mix somewhat but does not determine it.",
+    "assumption_note": "All expected cell counts >= 5 (minimum observed: 59.7), so the chi-square approximation is appropriate."
+  },
+  {
+    "test_name": "Kruskal-Wallis H-test: sponsor_type vs. enrollment",
+    "h0": "Mean/central enrollment is equal across Industry, NIH, and Other-sponsored trials.",
+    "h1": "Enrollment differs across at least one sponsor type.",
+    "statistic": 381.27808206055533,
+    "p_value": 1.6088532984187987e-83,
+    "effect_size_name": "epsilon-squared (rank-based)",
+    "effect_size": 0.04215606113821889,
+    "n": 9000,
+    "interpretation": "Kruskal-Wallis H-test finds enrollment size differs across sponsor types (statistic=381.28, p=1.609e-83); the effect size is small (epsilon-squared (rank-based)=0.042). Median enrollment by sponsor type: Industry=88, NIH=63, Other=52.",
+    "assumption_note": "Shapiro-Wilk rejected normality (p < 0.05) for: Industry, NIH, Other -- expected, since enrollment is right-skewed (see descriptive stats). ANOVA's normality assumption is not met, so the non-parametric Kruskal-Wallis test was used instead."
+  },
+  {
+    "test_name": "Mann-Whitney U test: duration_days, Completed vs. Terminated/Withdrawn",
+    "h0": "Trial duration is equal between Completed and Terminated/Withdrawn trials.",
+    "h1": "Trial duration differs between Completed and Terminated/Withdrawn trials.",
+    "statistic": 6265539.0,
+    "p_value": 0.0,
+    "effect_size_name": "rank-biserial correlation",
+    "effect_size": -0.8295085586041335,
+    "n": 6176,
+    "interpretation": "Mann-Whitney U test finds duration differs significantly between Completed and Terminated/Withdrawn trials (statistic=6265539.00, p=0); Completed trials run longer on average (818 vs 351 median-adjacent days), rank-biserial correlation=-0.830.",
+    "assumption_note": "Shapiro-Wilk rejected normality for at least one group (Completed p=4.15e-22, Terminated/Withdrawn p=4.13e-23), so the non-parametric Mann-Whitney U test was used instead of a t-test."
+  }
+]
