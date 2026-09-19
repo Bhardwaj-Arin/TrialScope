@@ -1,50 +1,123 @@
 # TrialScope
 
-**TrialScope** is a small, SQL-first data analytics project on public
-clinical trial registry data. It answers a handful of concrete questions —
-how trial phase, sponsor type, and enrollment size relate to completion
-outcomes — using raw SQL extraction, descriptive statistics, and three
-hypothesis tests, presented in a small Streamlit dashboard. It deliberately
-contains **no machine learning, no agentic AI, and no ORM** — every query is
-hand-written SQL, and every statistical result is a single, explainable
-test, by design (see "Hard constraints" below).
+**A no-nonsense look at 9,000 clinical trials: which ones finish, which ones
+stop early, and what actually explains the difference.**
 
-## What this project does
+🔗 **Live app:** [trialscope-bmdqtoqvdfsjcs469nc9zh.streamlit.app](https://trialscope-bmdqtoqvdfsjcs469nc9zh.streamlit.app/)
 
-1. Extracts clinical trial data (studies, lead sponsors, primary conditions)
-   from an AACT-schema PostgreSQL database using three hand-written SQL
-   files (`sql/*.sql`) — no ORM, no query built programmatically.
-2. Computes descriptive statistics: distributions by phase / status /
-   sponsor type, the enrollment-size distribution (mean, median, IQR,
-   skewness), registration trends over time, and top conditions studied.
-3. Runs exactly three hypothesis tests to answer specific questions about
-   how phase, sponsor type, and enrollment relate to completion outcomes —
-   each with H0/H1, an assumption check that determines which test is
-   actually used, the test statistic, p-value, an effect size, and a
-   plain-language interpretation.
-4. Displays all of the above in a two-tab Streamlit dashboard that reads
-   only pre-computed, saved results (it does not recompute anything live).
+---
 
-## Data source
+## What is TrialScope, in plain English?
 
-**AACT** (Aggregate Analysis of ClinicalTrials.gov) — a public, freely
-downloadable relational database maintained by the Clinical Trials
-Transformation Initiative (CTTI) at Duke University
-(`https://aact.ctti-clinicaltrials.org/`), containing structured data from
-every study registered on ClinicalTrials.gov. No credentialing is required.
+Every clinical trial that runs anywhere in the world gets registered on
+[ClinicalTrials.gov](https://clinicaltrials.gov), a public database. That
+registry records things like: what phase the trial is in, who's paying for
+it, how many patients it enrolled, and whether it finished, is still
+running, or was stopped early.
 
-**This build ships with a synthetic, local stand-in for AACT** so the
-project runs without a multi-gigabyte external download: `src/generate_sample_aact.py`
-creates a local Postgres schema literally named `ctgov` (AACT's own schema
-name) with a subset of the real `studies`, `sponsors`, and `conditions`
-tables — same table and column names — filled with synthetically generated
-data whose distributions resemble the real registry (right-skewed
-enrollment, realistic phase/status/sponsor mixes, modest and realistic
-relationships between phase/sponsor type and outcomes). Every `.sql` file in
-`sql/` is written against the real AACT column names, so **pointing this
-project at a real AACT restore instead requires changing only the
-connection settings in `src/db.py`** — see "Switching to the real AACT
-database" below. Full reasoning in `docs/methodology.md`.
+**TrialScope takes that raw registry data and asks three honest,
+answerable questions about it:**
+
+1. Does a trial's **phase** (1 through 4) have anything to do with whether
+   it **completes, gets terminated, or gets withdrawn**?
+2. Do **industry-funded**, **government (NIH)-funded**, and
+   **other-funded** trials tend to **enroll different numbers of
+   patients**?
+3. Do trials that **finish** as planned run for a **different length of
+   time** than trials that get **stopped early**?
+
+Each question is answered with a standard, well-known statistical test —
+not a guess, not a machine-learning model, not an AI's opinion. Every
+result comes with the actual numbers (test statistic, p-value, effect
+size) and a plain-language sentence explaining what it means, so you don't
+need a statistics degree to read the conclusion — but the real math is
+always there if you want to check it yourself.
+
+You can explore all of this interactively in the **[live Streamlit
+app](https://trialscope-bmdqtoqvdfsjcs469nc9zh.streamlit.app/)**, or run
+the whole pipeline yourself locally (instructions below).
+
+### What TrialScope deliberately is *not*
+
+To keep every result fully explainable, this project does **not** use:
+
+- ❌ Machine learning or predictive modeling of any kind
+- ❌ AI agents, LLMs, chatbots, or generative text
+- ❌ An ORM — every database query is a hand-written SQL file you can read
+  top to bottom
+- ❌ Any statistical method beyond a handful of textbook tests
+
+If a number appears in this app, you can trace it back to one SQL query
+and one SciPy function call. Nothing is a black box.
+
+---
+
+## How the project fits together
+
+```
+   PostgreSQL database          Hand-written SQL          Python
+  (clinical trial records)  →   (sql/*.sql files)    →   (pandas, SciPy)
+                                                              │
+                                                              ▼
+                                              Descriptive statistics
+                                              + 3 hypothesis tests
+                                                              │
+                                                              ▼
+                                                 Streamlit dashboard
+                                            (reads saved results only)
+```
+
+The dashboard **never talks to the database directly and never runs a
+statistical test itself** — it only displays results that were already
+computed and saved to disk by the pipeline. This keeps the dashboard fast
+and keeps every number reproducible: run the pipeline once, and the
+dashboard will show exactly the same figures every time until you re-run
+it.
+
+---
+
+## Exploring the app
+
+The live app is organized into four pages, accessible from the sidebar:
+
+| Page | What you'll find there |
+|---|---|
+| 🏠 **Home** | Headline numbers (total trials, completion rate, typical enrollment/duration) and quick-glance charts, so you can get the gist in ten seconds. |
+| 📊 **Descriptive Statistics** | How trials break down by phase, status, sponsor type, and condition; registration trends over time; the shape of the enrollment-size data (and why the "average" trial size can be misleading). |
+| 🧮 **Group Comparisons** | The three hypothesis tests described above — each with its hypothesis, the test actually used (and why), the result, and what it means in plain language. |
+| 🔎 **Trial Explorer** | Search and filter all 9,000 trials yourself — by phase, status, sponsor, condition, enrollment size, or date — and export whatever you filter down to as a CSV. |
+
+Every chart is a bar, line, or box plot — deliberately simple, readable
+chart types, with nothing 3D or animated to distract from the numbers.
+
+---
+
+## Where the data comes from
+
+TrialScope is built on the schema used by **AACT** (*Aggregate Analysis of
+ClinicalTrials.gov*) — a free, public, relational database maintained by
+the Clinical Trials Transformation Initiative (CTTI) at Duke University
+(<https://aact.ctti-clinicaltrials.org/>). AACT mirrors every study
+registered on ClinicalTrials.gov and requires no special access or
+credentialing.
+
+**This build ships with a realistic synthetic stand-in for AACT**, so
+anyone can run it without downloading a multi-gigabyte external database.
+`src/generate_sample_aact.py` creates a local Postgres schema — using
+AACT's own schema and table names (`ctgov.studies`, `ctgov.sponsors`,
+`ctgov.conditions`) — filled with generated data whose statistical
+properties mirror the real registry: right-skewed enrollment sizes,
+realistic phase/status/sponsor mixes, and modest, realistic relationships
+between phase, sponsor type, and outcomes.
+
+Because every SQL file is written against AACT's real column names,
+**pointing this project at an actual AACT database instead only requires
+changing the connection settings** — no query needs to be rewritten. See
+[Using a real AACT database](#using-a-real-aact-database-instead-of-the-synthetic-one)
+below. The full reasoning behind every data-scoping decision is documented
+in [`docs/methodology.md`](docs/methodology.md).
+
+---
 
 ## Repository structure
 
@@ -52,46 +125,61 @@ database" below. Full reasoning in `docs/methodology.md`.
 TrialScope/
 ├── README.md
 ├── requirements.txt
-├── sql/
+│
+├── sql/                          # Hand-written SQL — no ORM, no query builder
 │   ├── extract_studies.sql
 │   ├── extract_sponsors.sql
 │   └── extract_conditions.sql
-├── notebooks/
+│
+├── src/                          # The pipeline: SQL → stats → saved results
+│   ├── db.py                     #   raw psycopg2 connection + .sql file runner
+│   ├── generate_sample_aact.py   #   builds the local synthetic database
+│   ├── run_extraction.py         #   Step 1: runs sql/*.sql, joins, computes duration
+│   ├── run_descriptive_stats.py  #   Step 2: descriptive stats → results/descriptive/
+│   ├── run_hypothesis_tests.py   #   Step 3: the 3 hypothesis tests → results/
+│   └── stats_utils.py            #   every statistical function, fully documented
+│
+├── data/processed/               # Extracted + joined CSVs (built by the pipeline)
+├── results/                      # Saved numbers the dashboard reads
+│   └── descriptive/
+│
+├── app/                          # The Streamlit dashboard
+│   ├── streamlit_app.py          #   Home page
+│   ├── pages/
+│   │   ├── 1_Descriptive_Statistics.py
+│   │   ├── 2_Group_Comparisons.py
+│   │   └── 3_Trial_Explorer.py
+│   └── components/               #   shared styling + cached data-loading helpers
+│       ├── ui.py
+│       └── data_access.py
+│
+├── notebooks/                    # The same 3 pipeline steps, walked through interactively
 │   ├── 01_data_extraction.ipynb
 │   ├── 02_descriptive_statistics.ipynb
 │   └── 03_group_comparisons.ipynb
-├── src/
-│   ├── db.py                    # raw psycopg2 connection + .sql file runner (no ORM)
-│   ├── generate_sample_aact.py  # builds the local synthetic ctgov schema
-│   ├── run_extraction.py        # Step 1: runs sql/*.sql, joins, computes duration_days
-│   ├── run_descriptive_stats.py # Step 2: descriptive stats -> results/descriptive/
-│   ├── run_hypothesis_tests.py  # Step 3: hypothesis tests -> results/
-│   └── stats_utils.py           # descriptive-stat and hypothesis-test functions
-├── data/
-│   └── processed/               # extracted + joined CSVs (created by running the pipeline)
-├── results/                     # saved artifacts the dashboard reads (created by the pipeline)
-├── app/
-│   └── streamlit_app.py         # the dashboard
+│
 └── docs/
-    └── methodology.md           # every scope/filtering/join decision, and why
+    └── methodology.md            # Every scope, filtering, and join decision, and why
 ```
 
-## How to run
+---
 
-Requires Python 3.10+ and a local PostgreSQL 14+ server.
+## Running it yourself
+
+**Requirements:** Python 3.10+ and a local PostgreSQL 14+ server.
 
 ```bash
 pip install -r requirements.txt
 
-# 1. Create a database + role (only needed once; matches src/db.py defaults)
+# 1. Create a database + role (one-time setup; matches src/db.py defaults)
 sudo -u postgres psql -c "CREATE USER trialscope WITH PASSWORD 'trialscope';"
 sudo -u postgres psql -c "CREATE DATABASE aact OWNER trialscope;"
 
-# 2. Build the local synthetic ctgov schema (skip this step entirely if you
-#    are pointing at a real AACT restore instead -- see below)
+# 2. Build the local synthetic ctgov schema
+#    (skip this step if you're using a real AACT restore instead — see below)
 python -m src.generate_sample_aact
 
-# 3. Run the pipeline: SQL extraction -> descriptive stats -> hypothesis tests
+# 3. Run the pipeline: SQL extraction → descriptive stats → hypothesis tests
 python -m src.run_extraction
 python -m src.run_descriptive_stats
 python -m src.run_hypothesis_tests
@@ -100,90 +188,105 @@ python -m src.run_hypothesis_tests
 streamlit run app/streamlit_app.py
 ```
 
-Or open the notebooks in `notebooks/` (already executed, with output saved)
-to walk through the same three steps interactively.
+Prefer to read through the analysis step by step instead? Open the
+notebooks in `notebooks/` — they're already executed, with output saved,
+so you can follow along without running anything.
 
-### Switching to the real AACT database
+### Using a real AACT database instead of the synthetic one
 
 1. Download a monthly AACT PostgreSQL dump from
-   `https://aact.ctti-clinicaltrials.org/` (or use CTTI's hosted read-only
-   instance — confirm the current access method on their site) and restore
+   <https://aact.ctti-clinicaltrials.org/> (or use CTTI's hosted read-only
+   instance — check their site for the current access method) and restore
    it locally. Real AACT uses the schema name `ctgov`, exactly like this
-   build's synthetic stand-in.
-2. Skip `python -m src.generate_sample_aact` — the real restore already has
-   the `ctgov.studies`, `ctgov.sponsors`, and `ctgov.conditions` tables (with
-   many more columns than this project uses; the SQL below only selects the
-   ones it needs).
-3. Point `src/db.py` at the real database by setting environment variables
-   (`TRIALSCOPE_DB_HOST`, `TRIALSCOPE_DB_PORT`, `TRIALSCOPE_DB_NAME`,
-   `TRIALSCOPE_DB_USER`, `TRIALSCOPE_DB_PASSWORD`) instead of editing code.
-4. Run steps 3–4 above unchanged.
+   project's synthetic stand-in.
+2. Skip `python -m src.generate_sample_aact` — a real restore already has
+   the `ctgov.studies`, `ctgov.sponsors`, and `ctgov.conditions` tables
+   (with many more columns than this project needs; the SQL files simply
+   select the ones they use).
+3. Point `src/db.py` at your real database using environment variables —
+   `TRIALSCOPE_DB_HOST`, `TRIALSCOPE_DB_PORT`, `TRIALSCOPE_DB_NAME`,
+   `TRIALSCOPE_DB_USER`, `TRIALSCOPE_DB_PASSWORD` — instead of editing any
+   code.
+4. Run steps 3–4 from above, unchanged.
 
-## Hard constraints (by design, not by omission)
+---
 
-- **No machine learning of any kind.** The roadmap PDF lists a logistic
-  regression on completion status as an *optional stretch goal*; it is
-  intentionally **not implemented** here, because the build prompt's hard
-  constraints ("no ML of any kind... even as an optional bonus") take
-  priority over the roadmap.
-- **No agentic AI, no LLM calls, no RAG, no chatbot interface.**
-- **No ORM.** `src/db.py` is a thin `psycopg2` connection helper; every
-  query is a hand-written `.sql` file.
-- **No statistics beyond what's listed in scope** — no multivariate
-  regression, survival analysis, Bayesian methods, or ML-based imputation.
+## The three hypothesis tests, explained
 
-## The three hypothesis tests, and their results on this build's dataset
+> Numbers below are from this build's synthetic dataset (9,000
+> interventional trials, 2011–2025). They'll shift slightly if you
+> regenerate the data with a different random seed, or point the project
+> at a real AACT restore — that's expected. What stays constant is *how*
+> each test was chosen and *why*.
 
-Numbers below are from this build's synthetic dataset (9,000 interventional
-trials, 2011–2025) and will differ slightly if you regenerate it with a
-different seed, or replace it with a real AACT restore — that's expected;
-what should stay constant is the reasoning behind each test choice.
+**1. Does trial phase relate to completion status?**
+*Test used: Chi-square test of independence.*
+Result: statistically significant (p < 0.0001), but the real-world
+relationship is weak (Cramér's V = 0.10) — phase nudges the mix of
+outcomes somewhat, but doesn't come close to determining it.
 
-**1. Chi-square test of independence — trial phase vs. completion status**
-H0: phase and completion status are independent. Result: chi2 = 270.3,
-p < 0.0001, Cramér's V = 0.10 (a *statistically* significant but
-*practically weak* association — phase shifts the completion-status mix
-somewhat, but far from determines it).
+**2. Does sponsor type relate to enrollment size?**
+*Test used: Kruskal-Wallis test* (enrollment data failed a normality
+check in every group — expected, since it's right-skewed — so the
+non-parametric alternative to ANOVA was used instead).
+Result: statistically significant (p < 0.0001), small effect
+(epsilon-squared = 0.042). Median enrollment: Industry 88, NIH 63,
+Other 52 — industry-sponsored trials tend to enroll somewhat more
+patients.
 
-**2. Kruskal-Wallis test — sponsor type vs. enrollment size**
-H0: central enrollment is equal across Industry / NIH / Other sponsors.
-Enrollment failed a Shapiro-Wilk normality check in every group (expected —
-it's right-skewed), so Kruskal-Wallis was used instead of one-way ANOVA.
-Result: H = 381.3, p < 0.0001, epsilon-squared = 0.042 (small effect).
-Median enrollment: Industry 88, NIH 63, Other 52 — industry-sponsored
-trials tend to enroll somewhat more participants.
+**3. Do completed trials run longer than trials stopped early?**
+*Test used: Mann-Whitney U test* (again, non-parametric, because duration
+also failed the normality check).
+Result: statistically significant (p < 0.0001), and this time the effect
+is large (rank-biserial correlation = -0.83) — completed trials run
+substantially longer than terminated or withdrawn ones, which makes
+intuitive sense: a trial that gets stopped early is, by definition, cut
+short.
 
-**3. Mann-Whitney U test — trial duration, Completed vs. Terminated/Withdrawn**
-H0: duration is equal between the two groups. Duration failed Shapiro-Wilk
-in both groups (expected — it's modeled as right-skewed), so Mann-Whitney U
-was used instead of a t-test. Result: p < 0.0001, rank-biserial correlation
-= -0.83 (a large effect) — Completed trials run substantially longer on
-average than Terminated/Withdrawn trials, which is intuitive: a trial that
-gets stopped early is, definitionally, cut short.
+For each test's exact hypotheses (H0/H1), the assumption check that
+determined which test to use, and the full interpretation, see the
+**Group Comparisons** page in the app or `results/hypothesis_tests.csv`.
 
-For every test's exact H0/H1 wording, assumption-check note, and full
-interpretation sentence, see the "Group Comparisons" tab of the dashboard
-or `results/hypothesis_tests.csv`.
+### A 30-second guide to reading these results
 
-## How to read a p-value / effect size
+- **The p-value** answers *"could this pattern just be random chance?"*
+  It is **not** the probability that the null hypothesis is true, and it
+  says nothing about how big or important the effect is. With thousands of
+  trials, even a tiny, practically meaningless difference can produce a
+  very small p-value.
+- **The effect size** (Cramér's V, epsilon-squared, or rank-biserial
+  correlation, depending on the test) answers *"okay, but how big is the
+  difference, really?"* — on a scale that doesn't grow just because the
+  sample is large.
 
-A p-value is the probability of seeing a difference at least this large *if
-the null hypothesis were true* — it is not the probability H0 is true, and
-it says nothing about how large or important the effect is. An effect size
-(Cramér's V, eta-/epsilon-squared, Cohen's d, or rank-biserial correlation,
-depending on the test) measures how large the relationship actually is,
-independent of sample size. With thousands of trials, almost any real
-difference becomes "statistically significant" — the effect size is what
-tells you whether it's also big enough to matter. This note also appears in
-the dashboard's "How to Read This" tab.
+You need both numbers to tell the full story: the p-value tells you
+whether a difference is probably real, and the effect size tells you
+whether it's big enough to matter.
+
+---
+
+## Design principles (why some things are intentionally left out)
+
+- **No machine learning, anywhere** — including as an "optional" addition.
+  Every number in this project comes from a single, explainable, textbook
+  statistical test.
+- **No agentic AI, LLM calls, RAG, or chatbot interface.**
+- **No ORM.** `src/db.py` is a thin `psycopg2` connection helper, and every
+  query is a `.sql` file you can open and read directly.
+- **No statistics beyond what's in scope** — no multivariate regression,
+  survival analysis, Bayesian methods, or ML-based imputation.
+- **Only bar, line, and box charts** — chosen for clarity over novelty.
+
+---
 
 ## Technical stack
 
 | Layer | Tools |
 |---|---|
 | Database | PostgreSQL (AACT schema; synthetic local stand-in included) |
-| Query layer | Raw SQL via `psycopg2` (no ORM) |
+| Query layer | Raw SQL via `psycopg2` — no ORM |
 | Statistics | SciPy |
-| Visualization | Plotly (bar, line, box plots only) |
+| Data handling | pandas |
+| Visualization | Plotly (bar, line, and box plots only) |
 | Application | Streamlit |
 | Language | Python, SQL |
